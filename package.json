@@ -1,0 +1,26 @@
+{
+  "name": "queue-ms-printer",
+  "version": "1.0.0",
+  "description": "Express service that prints queue tokens on EPSON TM-T81III",
+  "main": "server.js",
+  "bin": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build:exe": "pkg . --out-path dist"
+  },
+  "pkg": {
+    "assets": ["assets/**/*", "comScan.js", "logoResize.js"],
+    "targets": ["node18-win-x64"]
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "node-thermal-printer": "^4.6.0",
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  }
+}
