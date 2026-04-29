@@ -109,6 +109,7 @@ async function printReceipt(token) {
   printer.alignCenter();
   await printer.printImageBuffer(logoPng);
   printer.newLine();
+  printer.newLine();
 
   const mag = escposMagnificationFromSp(TOKEN_SP);
   printer.setTypeFontA();
@@ -120,6 +121,7 @@ async function printReceipt(token) {
   printer.setTextNormal();
   printer.bold(false);
   printer.newLine();
+  printer.newLine();
 
   const dateStr = new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
@@ -128,7 +130,7 @@ async function printReceipt(token) {
   printer.alignCenter();
   printer.setTypeFontA();
   printer.setTextNormal();
-  printer.setTextSize(1, 1);
+  printer.setTextSize(0, 0);
   printer.println(`Token generated at: ${dateStr}`);
   printer.setTextSize(0, 0);
   printer.setTextNormal();
