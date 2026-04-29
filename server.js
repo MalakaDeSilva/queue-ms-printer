@@ -9,7 +9,7 @@ const {
   BreakLine,
 } = require("node-thermal-printer");
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 3001;
 
 /**
  * USB (Windows): set PRINTER_COM to the COM number from Device Manager
