@@ -6,11 +6,19 @@
   "bin": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build:exe": "pkg . --out-path dist"
+    "build:exe": "pkg . --out-path dist",
+    "package": "pkg . --collect-all usb"
   },
   "pkg": {
-    "assets": ["assets/**/*", "comScan.js", "logoResize.js"],
-    "targets": ["node18-win-x64"]
+    "assets": [
+      "assets/**/*",
+      "comScan.js",
+      "logoResize.js",
+      "node_modules/usb/**/*"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ]
   },
   "engines": {
     "node": ">=18"
@@ -18,7 +26,8 @@
   "dependencies": {
     "express": "^5.2.1",
     "node-thermal-printer": "^4.6.0",
-    "pngjs": "^7.0.0"
+    "pngjs": "^7.0.0",
+    "usb": "^2.17.0"
   },
   "devDependencies": {
     "pkg": "^5.8.1"

@@ -8,6 +8,7 @@ const {
   CharacterSet,
   BreakLine,
 } = require("node-thermal-printer");
+const { usb, getDeviceList } = require("usb");
 
 const PORT = Number(process.env.PORT) || 3001;
 
@@ -36,7 +37,7 @@ function resolvePrinterInterface() {
 }
 
 const PRINTER_INTERFACE = resolvePrinterInterface();
-const LOGO_PATH = path.join(__dirname, "assets", "HSBC-Premier-logo.png");
+const LOGO_PATH = path.join(__dirname, "assets", "HSBC-logo-black.png");
 
 /**
  * 58 (default): logo max 384 dots — fits 58mm; on 80mm it prints narrower, not cropped.
@@ -81,7 +82,7 @@ function createPrinter() {
       const err = new Error(
         'PRINTER_INTERFACE uses printer:... but the native module "printer" is not installed or failed to load. ' +
           "For USB without that module, use Epson's virtual COM driver and set PRINTER_COM=<number> " +
-          '(see Device Manager → Ports COM & LPT), e.g. PRINTER_COM=5 for \\\\.\\COM5.'
+          "(see Device Manager → Ports COM & LPT), e.g. PRINTER_COM=5 for \\\\.\\COM5.",
       );
       err.code = "MISSING_PRINTER_DRIVER";
       throw err;
@@ -98,7 +99,7 @@ async function printReceipt(token) {
     const connected = await printer.isPrinterConnected();
     if (!connected) {
       const err = new Error(
-        `Printer not reachable at ${PRINTER_INTERFACE}. Check cable, driver, or queue name.`
+        `Printer not reachable at ${PRINTER_INTERFACE}. Check cable, driver, or queue name.`,
       );
       err.code = "PRINTER_OFFLINE";
       throw err;
@@ -131,7 +132,8 @@ async function printReceipt(token) {
   printer.setTypeFontA();
   printer.setTextNormal();
   printer.setTextSize(0, 0);
-  printer.println(`Token generated at: ${dateStr}`);
+  printer.println(`Token generated at:`);
+  printer.println(`${dateStr}`);
   printer.setTextSize(0, 0);
   printer.setTextNormal();
   printer.newLine();
@@ -142,6 +144,48 @@ async function printReceipt(token) {
   await printer.execute();
 }
 
+let IS_ATTACHED = false;
+usb.on("attach", (device) => {
+  if (
+    device.deviceDescriptor.idVendor == 1208 &&
+    device.deviceDescriptor.idProduct == 3623
+  ) {
+    // EPSON - Printer
+    IS_ATTACHED = true;
+  }
+});
+
+usb.on("detach", (device) => {
+  if (
+    device.deviceDescriptor.idVendor == 1208 &&
+    device.deviceDescriptor.idProduct == 3623
+  ) {
+    // EPSON - Printer
+    IS_ATTACHED = false;
+  }
+});
+
+function checkIfPrinterAttached() {
+  try {
+    let devices = getDeviceList();
+    for (const device of devices) {
+      let deviceDescriptor = device.deviceDescriptor;
+
+      if (
+        deviceDescriptor.idVendor == 1208 &&
+        deviceDescriptor.idProduct == 3623
+      ) {
+        // EPSON - Printer
+        return true;
+      } else {
+        return false;
+      }
+    }
+  } catch (err) {
+    return false;
+  }
+}
+
 const app = express();
 
 /** Lists COM ports (Windows WMI). Epson-like devices use USB VID 04B8 or "Epson" in the description. */
@@ -150,15 +194,31 @@ app.get("/ports", (req, res) => {
   return res.status(200).json(scan);
 });
 
+app.get("/device", (req, res) => {
+  return res.status(200).json({ device: DEVICE });
+});
+
 app.get("/print", async (req, res) => {
+  IS_ATTACHED = checkIfPrinterAttached();
+
   const raw = req.query.token;
   if (raw === undefined || raw === "") {
-    return res.status(400).json({ error: "Missing required query parameter: token" });
+    return res
+      .status(400)
+      .json({ error: "Missing required query parameter: token" });
   }
+  
+  if (!IS_ATTACHED)
+    return res.status(500).json({
+      error:
+        "Printer is not attached. Please attach the printer and try again.",
+    });
 
   const s = String(raw).trim();
   if (!/^\d+$/.test(s)) {
-    return res.status(400).json({ error: "token must be a non-negative integer" });
+    return res
+      .status(400)
+      .json({ error: "token must be a non-negative integer" });
   }
   const token = Number(s);
   if (token > Number.MAX_SAFE_INTEGER) {
@@ -183,12 +243,16 @@ app.get("/print", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Print server listening on http://localhost:${PORT}`);
   console.log(`PRINTER_INTERFACE=${PRINTER_INTERFACE}`);
-  console.log(`PAPER_MM=${PAPER_MM} (58 = safe on 58+80mm logo; 80 = full-width logo on 80mm)`);
-  console.log(`TOKEN_SP=${TOKEN_SP} (ESC/POS mag=${escposMagnificationFromSp(TOKEN_SP)})`);
+  console.log(
+    `PAPER_MM=${PAPER_MM} (58 = safe on 58+80mm logo; 80 = full-width logo on 80mm)`,
+  );
+  console.log(
+    `TOKEN_SP=${TOKEN_SP} (ESC/POS mag=${escposMagnificationFromSp(TOKEN_SP)})`,
+  );
   console.log(`COM scan: http://localhost:${PORT}/ports`);
   if (/^\\\\\.\\COM/i.test(PRINTER_INTERFACE)) {
     console.log(
-      "USB/COM: ensure Epson TM USB / virtual COM driver is installed and this COM port matches Device Manager."
+      "USB/COM: ensure Epson TM USB / virtual COM driver is installed and this COM port matches Device Manager.",
     );
   }
 });
